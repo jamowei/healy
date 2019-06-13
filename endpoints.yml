@@ -1,0 +1,4 @@
+endpoints:
+  google:   https://www.google.com
+  notfound: http://isnothinghere.com
+  facebook: https://facebook.com

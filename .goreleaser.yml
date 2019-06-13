@@ -1,0 +1,28 @@
+builds:
+  - main: ./healy.go
+    binary: healy
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      
+# Archive customization
+archives:
+  - id: healy
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    replacements:
+      amd64: x64
+      darwin: mac
+    files:
+      - README.md
+      - LICENSE
+
+changelog:
+  filters:
+    exclude:
+      - '^!clog:'
