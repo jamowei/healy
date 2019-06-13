@@ -1,16 +1,16 @@
 package main
 
 import (
-	"time"
-	// "bytes"
-	"io"
-	// "bufio"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"text/tabwriter"
+	"time"
 
 	args "github.com/akamensky/argparse"
 	c "github.com/logrusorgru/aurora"
@@ -35,6 +35,11 @@ func main() {
 		Default:  "endpoints.yml",
 	})
 
+	var tick = parser.Int("t", "tick", &args.Options{
+		Required: false,
+		Help:     "seconds to wait and repeat health-checking",
+	})
+
 	err := parser.Parse(os.Args)
 
 	if err != nil {
@@ -43,10 +48,26 @@ func main() {
 	}
 
 	conf := parseConfig(configFile)
-	testEndpoints(conf)
+
+	if *tick > 0 {
+
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+		testEndpoints(conf)
+		done := startTicker(*tick, func() {
+			logger.Println(".........................................")
+			testEndpoints(conf)
+		})
+
+		<-stop
+		close(stop); close(done)
+	} else {
+		testEndpoints(conf)
+	}
 }
 
-func parseConfig(file *os.File) Config {
+func parseConfig(file *os.File) *Config {
 	fileInfo, _ := file.Stat()
 	bytes := make([]byte, fileInfo.Size())
 
@@ -62,13 +83,13 @@ func parseConfig(file *os.File) Config {
 		logger.Fatalf("Error parsing %s: %s", fileInfo.Name(), err)
 	}
 
-	return config
+	return &config
 }
 
-func testEndpoints(conf Config) {
+func testEndpoints(conf *Config) {
 
 	if len(conf.Endpoints) < 1 {
-		logger.Printf("no endpoints found, nothing to do...")
+		logger.Fatalln("no endpoints found, nothing to do...")
 	}
 
 	var wg sync.WaitGroup
@@ -94,8 +115,23 @@ func testEndpoints(conf Config) {
 				resultLog.Printf("%s\t%s\t%s", name, url, c.Bold(c.Green("Ok")))
 			}
 		}(name, url)
-
 	}
-
 	wg.Wait()
+}
+
+func startTicker(seconds int, f func()) chan bool {
+	done := make(chan bool, 1)
+	go func() {
+		ticker := time.NewTicker(time.Second * time.Duration(seconds))
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				f()
+			case <-done:
+				return
+			}
+		}
+	}()
+	return done
 }
