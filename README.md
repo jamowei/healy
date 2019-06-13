@@ -1,4 +1,4 @@
-# Pinger
+# Healy
 Healy is a small lightweigt command line programm written with ❤️ in [go](https://golang.org).
 It's made for health-checking webservers with an GET-request to specified enpoint, which is specified in the `endpoint.yml`.
 
