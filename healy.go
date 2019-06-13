@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	// "bytes"
 	"io"
 	// "bufio"
@@ -76,13 +77,17 @@ func testEndpoints(conf Config) {
 
 	var resultLog = log.New(w, "healy - ", 0)
 
+	var client = &http.Client{
+		Timeout: time.Second,
+	}
+
 	for name, url := range conf.Endpoints {
 
 		wg.Add(1)
 
 		go func(name, url string) {
 			defer wg.Done()
-			_, err := http.Get(url)
+			_, err := client.Get(url)
 			if err != nil {
 				resultLog.Printf("%s\t%s\t%s", name, url, c.Bold(c.Red("Failed")))
 			} else {
